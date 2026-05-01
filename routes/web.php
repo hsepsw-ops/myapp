@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -11,67 +12,50 @@ Route::get('/login', function () {
 })->name('login');
 
 Route::post('/login', function () {
-    // Simple login logic
-    $username = request('username');
-    $password = request('password');
-    if ($username === 'admin' && $password === 'password') {
-        session(['logged_in' => true]);
+    $credentials = [
+        'email'    => request('email'),
+        'password' => request('password'),
+    ];
+
+    if (Auth::attempt($credentials)) {
+        request()->session()->regenerate();
         return redirect('/home');
     }
-    return back()->with('error', 'Invalid credentials');
+
+    return back()->with('error', 'Email atau password salah.');
 });
 
 Route::post('/logout', function () {
-    session()->forget('logged_in');
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
     return redirect('/');
 });
 
-Route::middleware(['web'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/home', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
         return view('home');
     });
 
     Route::get('/hse', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
         return view('hse');
     });
 
     Route::get('/hse/pengawalan', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $history = session('pengawalan_history', []);
         return view('hse_pengawalan', ['history' => $history]);
     });
 
     Route::get('/hse/sci', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $reports = session('sci_reports', []);
         return view('hse_sci', ['reports' => $reports]);
     });
 
     Route::get('/hse/sci/create', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         return view('hse_sci_form');
     });
 
     Route::post('/hse/sci/save', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $data = request()->all();
         $data['created_at'] = now()->format('Y-m-d H:i');
         $data['title'] = request('report_title', 'Laporan SCI Baru');
@@ -81,10 +65,6 @@ Route::middleware(['web'])->group(function () {
     });
 
     Route::post('/hse/pengawalan/save', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $evidencePath = '-';
         if ($file = request()->file('evidence')) {
             if (!file_exists(public_path('uploads'))) {
@@ -111,10 +91,6 @@ Route::middleware(['web'])->group(function () {
     });
 
     Route::get('/hse/pengawalan/{index}/edit', function ($index) {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $history = session('pengawalan_history', []);
         if (!isset($history[$index])) {
             return redirect('/hse/pengawalan')->with('success', 'Laporan tidak ditemukan.');
@@ -127,10 +103,6 @@ Route::middleware(['web'])->group(function () {
     });
 
     Route::post('/hse/pengawalan/{index}/update', function ($index) {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $history = session('pengawalan_history', []);
         if (!isset($history[$index])) {
             return redirect('/hse/pengawalan')->with('success', 'Laporan tidak ditemukan.');
@@ -162,10 +134,6 @@ Route::middleware(['web'])->group(function () {
     });
 
     Route::get('/hse/pengawalan/{index}/print', function ($index) {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
-
         $history = session('pengawalan_history', []);
         if (!isset($history[$index])) {
             return redirect('/hse/pengawalan')->with('success', 'Laporan tidak ditemukan.');
@@ -177,9 +145,6 @@ Route::middleware(['web'])->group(function () {
     });
 
     Route::get('/profil', function () {
-        if (!session('logged_in')) {
-            return redirect('/login');
-        }
         return view('profil');
     });
 });
